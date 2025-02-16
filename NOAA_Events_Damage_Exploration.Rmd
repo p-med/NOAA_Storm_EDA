@@ -1,0 +1,135 @@
+---
+title: "NOAA Events damage exploration"
+author: "Paulo Medina"
+date: "2025-02-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Synopsis
+
+This report is built based on the **Storm Data** collected and disseminated by the [National Oceanographic and Atmospheric Association](https://www.noaa.gov/). The aim of the report is explore this data set to know which are the most damaging atmospheric events.
+
+The report presents the data processing, as well as the results.
+
+## Data Processing
+
+Below follows a thorough description of the data preparation.
+
+The libraries used for this work are:
+
+* tidyverse: for data prep.
+* here: for dir management.
+* egg: for plot layouts.
+
+### Data Load
+
+The data is provided as a `csv.bzip` file. To access it, I created a temporary file to store the raw data, then proceeded to read into the temp file with `data.table`.
+
+All the temporary files are then dropped.
+
+```{r libraries, message=FALSE,warning=FALSE, cache=TRUE}
+library(tidyverse)
+library(here)
+library(egg)
+```
+
+```{r data load, cache = TRUE}
+#Load data
+
+if(!dir.exists("./data")){dir.create(here("./data"))}#Set-up directory for work and data
+
+#Download data
+
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+temp <- tempfile() #Temporary variable to save zip file
+download.file(url,temp)
+
+```
+
+The data is then read.
+
+```{r data read, cache = TRUE}
+repdata <- read.table(temp, sep = ",", header = TRUE)
+
+unlink(temp); rm(temp, url) #Delete temporary files
+
+str(repdata)
+
+```
+
+### Subsetting data
+
+Given the size of the data, I will subset the dataset to hold the important variables only, and then group these by event type.
+
+```{r subsetting, cache=TRUE}
+eventype <- repdata %>% 
+        group_by(EVTYPE) %>%
+        summarise(fatalities = sum(FATALITIES), 
+                  mag = sum(MAG),
+                  injuries = sum(INJURIES),
+                  propmg = sum(PROPDMG))
+
+head(eventype,5)
+str(eventype)
+```
+
+With the relevant data, I will plot the top 20 events by fatalitites and injuries to see which are the most harmful.
+
+### Data exploration
+
+Let's look at the top events in general. The `top_n` function will retrieve the top events.
+
+```{r data exploration, cache=TRUE}
+top_n(eventype, 20)
+```
+
+Seems that **Flash Flooding** is the top event, with the highest aggregated values for all 4 categories.
+
+With data ready, we will be able to present the results.
+
+## Results
+
+The data indicates that the most harmful events for human life are the **tornadoes**. As seen below, the tornadoes are at the top for most fatalities and injuries
+
+```{r fatalities plot, fig.height=6,fig.width= 10, cache=TRUE}
+fat <- eventype %>% 
+        top_n(20, fatalities) %>%
+        ggplot() + 
+        geom_bar(aes(x=fatalities, 
+                     y=reorder(EVTYPE,+fatalities)),
+                 stat="identity") +
+        labs(title="Fatalities",x="",y="")
+
+inj <- eventype %>% 
+        top_n(20, injuries) %>%
+        ggplot() + 
+        geom_bar(aes(x=injuries, 
+                     y=reorder(EVTYPE,+injuries)),
+                 stat="identity") +
+        labs(title="Injuries",x="",y="")
+
+# Plot code:
+
+ggarrange(fat,inj, ncol = 2)
+
+```
+
+In terms of material damage
+
+```{r material damage plot, fig.height=6, fig.width=10, cache=TRUE}
+eventype %>% 
+        top_n(20, propmg) %>%
+        ggplot() + 
+        geom_bar(aes(x=propmg, 
+                     y=reorder(EVTYPE,+propmg)),
+                 stat="identity") +
+        labs(title="Property Damage",x="",y="")
+
+```
+
+With this, we can conclude that *Tornadoes* are the most harmful events accross the United States.
+

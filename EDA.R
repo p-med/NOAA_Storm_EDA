@@ -2,9 +2,11 @@
 
 #Load libraries
 
+install.packages("egg")
+
 library(tidyverse)
 library(here)
-library(sf)
+library(egg)
 
 #Load data
 
@@ -17,9 +19,6 @@ temp <- tempfile() #Temporary variable to save zip file
 download.file(url,temp)
 
 #Export data
-
-#unzip(temp, list = TRUE) #Explore zip folder
-#zip_list <- as.vector(unzip(temp, list = TRUE)[,1]) #Save structure
 
 repdata <- read.table(temp, sep = ",", header = TRUE)
 
@@ -39,17 +38,15 @@ eventype <- repdata %>%
 
 fatalities <- eventype %>% filter(fatalities != 0)
 
-fatalities %>% 
+fat <- eventype %>% 
         top_n(20, fatalities) %>%
         ggplot() + 
         geom_bar(aes(x=fatalities, 
                      y=reorder(EVTYPE,+fatalities)),
                  stat="identity") +
         labs(title="Fatalities",x="",y="")
-        
-injuries <- eventype %>% filter(injuries != 0)
-        
-injuries %>% 
+
+inj <- eventype %>% 
         top_n(20, injuries) %>%
         ggplot() + 
         geom_bar(aes(x=injuries, 
@@ -69,4 +66,3 @@ propmg %>%
                  stat="identity") +
         labs(title="Property Damage",x="",y="")
 
-        
